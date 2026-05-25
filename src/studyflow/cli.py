@@ -14,6 +14,7 @@ def build_initial_state(
     duration_min: int,
     content_sources: list[str],
     db_path: str,
+    live_updates: bool = True,
 ) -> GraphState:
     return {
         "session_id": str(uuid4()),
@@ -30,6 +31,7 @@ def build_initial_state(
         "messages": [],
         "done": False,
         "db_path": db_path,
+        "live_updates": live_updates,
     }
 
 
@@ -66,7 +68,12 @@ def _print_messages(messages: list[str]) -> None:
         print(f"- {msg}")
 
 
-def run_start_session(goal: str, duration_min: int, sources_raw: str) -> int:
+def run_start_session(
+    goal: str,
+    duration_min: int,
+    sources_raw: str,
+    live_updates: bool,
+) -> int:
     settings = get_settings()
     content_sources = _parse_sources(sources_raw)
     if not content_sources:
@@ -79,6 +86,7 @@ def run_start_session(goal: str, duration_min: int, sources_raw: str) -> int:
         duration_min=duration_min,
         content_sources=content_sources,
         db_path=settings.sqlite_path,
+        live_updates=live_updates,
     )
 
     create_session(
@@ -127,6 +135,11 @@ def main() -> int:
         default="generated",
         help="Comma-separated sources, e.g. notes.md,https://example.com,generated",
     )
+    start_parser.add_argument(
+        "--quiet-agents",
+        action="store_true",
+        help="Disable small live agent status prints during execution",
+    )
 
     args = parser.parse_args()
 
@@ -135,6 +148,7 @@ def main() -> int:
             goal=args.goal,
             duration_min=args.duration,
             sources_raw=args.sources,
+            live_updates=not args.quiet_agents,
         )
     return 1
 

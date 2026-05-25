@@ -28,3 +28,4 @@ class GraphState(TypedDict):
     messages: list[str]
     done: bool
     db_path: str
+    live_updates: bool

@@ -12,6 +12,11 @@ def _append_message(state: GraphState, text: str) -> list[str]:
     return [*state["messages"], text]
 
 
+def _status(state: GraphState, text: str) -> None:
+    if state["live_updates"]:
+        print(text)
+
+
 def _provider() -> OpenAICompatibleProvider:
     settings = get_settings()
     return OpenAICompatibleProvider(
@@ -69,8 +74,10 @@ def _parse_evaluation(parsed: dict[str, Any]) -> EvaluationResult:
 
 
 def planner_node(state: GraphState) -> dict[str, Any]:
+    _status(state, "[planner] selecting next study topic")
     plan = state["plan"]
     if not plan:
+        _status(state, "[planner] generating study plan")
         prompt = (
             "Create a short prerequisite-aware study plan as JSON.\n"
             "Return ONLY JSON: {\"plan\": [\"topic1\", \"topic2\", ...]}.\n"
@@ -85,6 +92,7 @@ def planner_node(state: GraphState) -> dict[str, Any]:
         plan = _coerce_plan(extract_json_object(raw), state["goal"])
 
     if state["current_step"] >= len(plan):
+        _status(state, "[planner] session plan complete")
         add_event(
             state["db_path"],
             state["session_id"],
@@ -100,6 +108,7 @@ def planner_node(state: GraphState) -> dict[str, Any]:
         }
 
     topic = plan[state["current_step"]]
+    _status(state, f"[planner] next topic: {topic}")
     add_event(
         state["db_path"],
         state["session_id"],
@@ -116,6 +125,7 @@ def planner_node(state: GraphState) -> dict[str, Any]:
 
 
 def focus_node(state: GraphState) -> dict[str, Any]:
+    _status(state, "[focus] monitoring for distractions")
     event = "Focus: monitoring active (warn + soft-block policy loaded)."
     add_event(
         state["db_path"],
@@ -132,6 +142,7 @@ def focus_node(state: GraphState) -> dict[str, Any]:
 
 def tutor_node(state: GraphState) -> dict[str, Any]:
     topic = state["current_topic"] or "General topic"
+    _status(state, f"[tutor] preparing lesson for: {topic}")
     prompt = (
         "Teach this topic for a beginner in concise format.\n"
         "Include:\n"
@@ -160,6 +171,7 @@ def tutor_node(state: GraphState) -> dict[str, Any]:
 
 def evaluator_node(state: GraphState) -> dict[str, Any]:
     topic = state["current_topic"] or "General topic"
+    _status(state, f"[evaluator] creating quiz and scoring for: {topic}")
     lesson = state["lesson"] or ""
     prompt = (
         "Given the lesson, create a micro-quiz and readiness estimate.\n"
@@ -205,6 +217,7 @@ def evaluator_node(state: GraphState) -> dict[str, Any]:
 
 
 def memory_node(state: GraphState) -> dict[str, Any]:
+    _status(state, "[memory] saving session progress")
     next_step = state["current_step"] + 1
     add_event(
         state["db_path"],
