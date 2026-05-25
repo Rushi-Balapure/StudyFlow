@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+import json
+from typing import Any, Protocol
 
 from openai import OpenAI
+
 
 class LLMProvider(Protocol):
     def chat(self, system_prompt: str, user_prompt: str) -> str:
         ...
+
 
 @dataclass
 class OpenAICompatibleProvider:
@@ -26,4 +29,26 @@ class OpenAICompatibleProvider:
             temperature=0.2,
         )
         content = response.choices[0].message.content
-        return content or ""
+        return (content or "").strip()
+
+
+def extract_json_object(text: str) -> dict[str, Any]:
+    stripped = text.strip()
+    try:
+        parsed = json.loads(stripped)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return {}
+
+    candidate = stripped[start : end + 1]
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
