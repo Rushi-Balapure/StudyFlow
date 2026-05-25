@@ -75,15 +75,22 @@ Acceptance checks:
 ## M3 - Adaptive Difficulty + Mastery Engine
 Target outcomes:
 - Dynamic difficulty and progression logic based on performance
+- Real interactive CLI study loop where the learner answers quiz prompts directly
 
 Deliverables:
 - Mastery calculation strategy
 - Difficulty adjustment policy
 - Advance/reinforce/remediate routing logic
+- Interactive question flow (`ask -> user answer -> score -> feedback`)
+- Answer evaluation against expected answer + rubric signal
+- Attempt policy (retry limits, hints, and escalation to remediation)
 
 Acceptance checks:
 - Weak performance triggers remediation
 - Strong performance advances difficulty
+- Learner answers are captured in-session and persisted in SQLite
+- Routing decisions change based on actual learner responses (not model-only estimates)
+- Session can continue topic-by-topic with repeated user interaction until completion
 
 ## M4 - Memory + Knowledge Graph Integration
 Target outcomes:
@@ -134,6 +141,8 @@ Acceptance checks:
 - [ ] Implement SQLite schema for sessions/evaluations/mastery
 - [ ] Integrate mem0 retrieval/write policies
 - [ ] Implement planner/tutor/evaluator node prompts and parsers
+- [ ] Implement interactive quiz input flow in CLI loop
+- [ ] Persist learner responses and attempt history per question
 - [ ] Implement adaptive routing logic
 - [ ] Implement knowledge graph utilities
 - [ ] Implement focus policy engine and detectors
