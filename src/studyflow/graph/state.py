@@ -27,7 +27,7 @@ class GraphState(TypedDict):
     focus_events: list[str]
     messages: list[str]
     done: bool
-    db_path:
+    db_path: str
     live_updates: bool
     learner_answer: str | None  # what user answered, or null if not asked yet
     attempt_count: int  # how many times they've tried this question

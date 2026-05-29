@@ -16,23 +16,23 @@ def build_initial_state(
     db_path: str,
     live_updates: bool = True,
 ) -> GraphState:
-    return {
-        "session_id": str(uuid4()),
-        "goal": goal,
-        "duration_min": duration_min,
-        "content_sources": content_sources,
-        "current_step": 0,
-        "plan": [],
-        "current_topic": None,
-        "lesson": None,
-        "quiz": [],
-        "evaluation": None,
-        "focus_events": [],
-        "messages": [],
-        "done": False,
-        "db_path": db_path,
-        "live_updates": live_updates,
-    }
+    return GraphState(
+        session_id=str(uuid4()),
+        goal=goal,
+        duration_min=duration_min,
+        content_sources=content_sources,
+        current_step=0,
+        plan=[],
+        current_topic=None,
+        lesson=None,
+        quiz= [],
+        evaluation= None,
+        focus_events= [],
+        messages= [],
+        done= False,
+        db_path= db_path,
+        live_updates= live_updates,
+    )
 
 
 def _parse_sources(raw: str) -> list[str]:
