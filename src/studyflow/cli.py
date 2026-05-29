@@ -121,6 +121,53 @@ def run_start_session(
     return 0
 
 
+def run_answer_quiz(
+    session_id: str,
+    question: str,
+    expected_answer: str,
+) -> int:
+    """
+    Interactive quiz answering with adaptive routing.
+    Returns: 0 if passed, 1 if needs remediation (weak performance)
+    """
+    import sqlite3
+    from datetime import datetime, timezone
+
+    conn = sqlite3.connect(settings.sqlite_path)
+    cursor = conn.cursor()
+
+    # Get session info
+    cursor.execute(
+        "SELECT session_id FROM sessions WHERE session_id = ?",
+        (session_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        print("Session not found.")
+        conn.close()
+        return 1
+
+    session_id = row[0]
+
+    # Get current step and topic
+    cursor.execute(
+        "SELECT current_step, topic FROM sessions WHERE session_id = ?",
+        (session_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return 1
+
+    current_step, topic = row[0], row[1]
+
+    # Get previous answer for comparison
+    prev_answer = None
+    try:
+        cursor.execute(
+            "SELECT learner_answer FROM session_scores WHERE session_id = ? AND step = ?
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="studyflow")
     subparsers = parser.add_subparsers(dest="command", required=True)
