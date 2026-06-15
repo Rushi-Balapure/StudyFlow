@@ -29,3 +29,9 @@ class GraphState(TypedDict):
     done: bool
     db_path: str
     live_updates: bool
+    learner_answer: str | None  # what user answered, or null if not asked yet
+    attempt_count: int  # how many times they've tried this question
+    max_attempts: int  # maximum attempts before escalation to remediation
+    learner_answer: str | None  # what user answered, or null if not asked yet
+    attempt_count: int  # how many times they've tried this question
+    max_attempts: int  # maximum attempts before escalation to remediation

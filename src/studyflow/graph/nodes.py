@@ -169,22 +169,28 @@ def tutor_node(state: GraphState) -> dict[str, Any]:
     }
 
 
-def evaluator_node(state: GraphState) -> dict[str, Any]:
+def evaluator_node(
+    state: GraphState,
+    user_answer: str | None = None,
+) -> dict[str, Any]:
     topic = state["current_topic"] or "General topic"
     _status(state, f"[evaluator] creating quiz and scoring for: {topic}")
     lesson = state["lesson"] or ""
+
+    # Determine if we need to show the question (new interactive mode)
+    needs_question = user_answer is None or user_answer.strip() == ""
+
     prompt = (
-        "Given the lesson, create a micro-quiz and readiness estimate.\n"
-        "Return ONLY JSON with this exact schema:\n"
-        "{"
-        "\"quiz\": [{\"question\": \"...\", \"expected_answer\": \"...\"}],"
-        "\"score\": 0.0,"
-        "\"feedback\": \"...\""
-        "}\n"
-        "Score must be between 0 and 1.\n"
+        f"Given the lesson, create a micro-quiz and readiness estimate.\n"
+        f"Return ONLY JSON with this exact schema:\n"
+        "{\"question\": \"...\", \"expected_answer\": \"...\", \"user_answer\": \"...\"},\n"
+        "\"score\": 0.0,\n"
+        "\"feedback\": \"...\"}\n"
+        f"Score must be between 0 and 1.\n"
         f"Topic: {topic}\n"
         f"Lesson:\n{lesson}"
     )
+
     raw = _provider().chat(
         "You are an evaluator. Return strict valid JSON only.",
         prompt,
@@ -192,6 +198,11 @@ def evaluator_node(state: GraphState) -> dict[str, Any]:
     parsed = extract_json_object(raw)
     quiz = _coerce_quiz(parsed, topic)
     evaluation = _parse_evaluation(parsed)
+
+    # Track attempt count and answer for adaptive routing
+    if user_answer is not None:
+        state["attempt_count"] += 1
+        state["learner_answer"] = user_answer.strip()
 
     add_event(
         state["db_path"],
@@ -209,11 +220,30 @@ def evaluator_node(state: GraphState) -> dict[str, Any]:
         evaluation["feedback"],
     )
 
-    return {
-        "quiz": quiz,
-        "evaluation": evaluation,
-        "messages": _append_message(state, f"Evaluator: score={evaluation['score']:.2f}."),
-    }
+    # Adaptive routing based on user response
+    if needs_question and state["attempt_count"] < 2:
+        _status(state, f"[evaluator] showing question for: {topic}")
+        return {
+            "quiz": quiz,
+            "evaluation": evaluation,
+            "messages": _append_message(state, f"Evaluator: score={evaluation['score']:.2f}.",),
+        }
+    elif user_answer is not None and state["attempt_count"] >= 3:
+        # Strong performance - advance
+        _status(state, f"[evaluator] strong performance for {topic}, advancing")
+        return {
+            "quiz": [],
+            "evaluation": evaluation,
+            "messages": _append_message(state, f"Evaluator: advanced to next topic.",),
+        }
+    else:
+        # Weak performance - remediate
+        _status(state, f"[evaluator] weak performance for {topic}, remediating")
+        return {
+            "quiz": quiz,
+            "evaluation": evaluation,
+            "messages": _append_message(state, f"Evaluator: score={evaluation['score']:.2f}. Remediate this topic.",),
+        }
 
 
 def memory_node(state: GraphState) -> dict[str, Any]:
@@ -228,8 +258,20 @@ def memory_node(state: GraphState) -> dict[str, Any]:
     )
     return {
         "current_step": next_step,
-        "messages": _append_message(state, f"Memory: persisted step {next_step}."),
+        "messages": _append_message(state, f"Memory: persisted step {next_step}.",),
     }
+
+
+def planner_route(state: GraphState) -> str:
+    if state["done"] and state["learner_answer"] is not None:
+        # Session complete - check for remediation needed
+        if state["attempt_count"] >= 3:
+            _status(state, "[planner] session complete with strong performance")
+            return "end"
+        else:
+            _status(state, "[planner] session complete, continuing to next topic")
+            return "continue"
+    return "continue"
 
 
 def planner_route(state: GraphState) -> str:
